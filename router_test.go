@@ -1032,6 +1032,42 @@ func TestRouterStaticDynamicConflict(t *testing.T) {
 	assert.Equal(t, "/", c.Get("path"))
 }
 
+// Issue #1526
+func TestRouterMatchSlash(t *testing.T) {
+	e := New()
+	r := e.router
+	handler := func(c Context) error {
+		c.Set("path", c.Path())
+		return nil
+	}
+
+	// A minimum of routes
+	r.Add(http.MethodGet, "/video", handler)
+	r.Add(http.MethodGet, "/video/*", handler)
+
+
+	c := e.NewContext(nil, nil).(*context)
+
+	// "/video/" > "/video/*"
+	testVideoSlash := func() {
+		r.Find(http.MethodGet, "/video/", c)
+		c.handler(c)
+		assert.Equal(t, "/video/*", c.Get("path"))
+		assert.Equal(t, "", c.Param("*"))
+	}
+	testVideoSlash()
+
+	// Adding more routes (comment out any, it doesn't matter)
+	r.Add(http.MethodGet, "/art", handler)
+	r.Add(http.MethodGet, "/art/", handler)
+	r.Add(http.MethodGet, "/art/*", handler)
+
+	c = e.NewContext(nil, nil).(*context)
+
+	// Same exact testVideoSlash() not working anymore
+	testVideoSlash()
+}
+
 // Issue #1348
 func TestRouterParamBacktraceNotFound(t *testing.T) {
 	e := New()
